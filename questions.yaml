@@ -1,0 +1,6 @@
+categories:
+- Group Authentication
+questions:
+- variable: LDAPAuthenticator.allowed_groups
+label: "UNIX group name"
+description:"Group this hub will be associated with"
