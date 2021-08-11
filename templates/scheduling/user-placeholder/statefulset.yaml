@@ -11,7 +11,7 @@ $ kubectl scale sts/user-placeholder --replicas 4
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "jupyterhub.user-placeholder.fullname" . }}
+  name: user-placeholder
   labels:
     {{- include "jupyterhub.labels" . | nindent 4 }}
 spec:
@@ -20,7 +20,7 @@ spec:
   selector:
     matchLabels:
       {{- include "jupyterhub.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "jupyterhub.user-placeholder.fullname" . }}
+  serviceName: "user-placeholder"
   template:
     metadata:
       labels:
@@ -28,38 +28,25 @@ spec:
         {{- include "jupyterhub.matchLabels" . | nindent 8 }}
     spec:
       {{- if .Values.scheduling.podPriority.enabled }}
-      priorityClassName: {{ include "jupyterhub.user-placeholder-priority.fullname" . }}
+      priorityClassName: {{ .Release.Name }}-user-placeholder-priority
       {{- end }}
       {{- if .Values.scheduling.userScheduler.enabled }}
-      schedulerName: {{ include "jupyterhub.user-scheduler.fullname" . }}
+      schedulerName: {{ .Release.Name }}-user-scheduler
       {{- end }}
-      nodeSelector: {{ toJson .Values.singleuser.nodeSelector }}
-      {{- with concat .Values.scheduling.userPods.tolerations .Values.singleuser.extraTolerations }}
       tolerations:
-        {{- . | toYaml | nindent 8 }}
-      {{- end }}
+        {{- include "jupyterhub.userTolerations" . | nindent 8 }}
+      nodeSelector: {{ toJson .Values.singleuser.nodeSelector }}
       {{- if include "jupyterhub.userAffinity" . }}
       affinity:
         {{- include "jupyterhub.userAffinity" . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: 0
       automountServiceAccountToken: false
-      {{- with include "jupyterhub.imagePullSecrets" (dict "root" . "image" .Values.scheduling.userPlaceholder.image) }}
-      imagePullSecrets: {{ . }}
-      {{- end }}
       containers:
         - name: pause
-          image: {{ .Values.scheduling.userPlaceholder.image.name }}:{{ .Values.scheduling.userPlaceholder.image.tag }}
-          {{- if .Values.scheduling.userPlaceholder.resources }}
+          image: {{ .Values.prePuller.pause.image.name }}:{{ .Values.prePuller.pause.image.tag }}
           resources:
-            {{- .Values.scheduling.userPlaceholder.resources | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- else if (include "jupyterhub.singleuser.resources" .) }}
-          resources:
-            {{- include "jupyterhub.singleuser.resources" . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.scheduling.userPlaceholder.image.pullPolicy }}
-          imagePullPolicy: {{ . }}
-          {{- end }}
+            {{- include "jupyterhub.resources" . | nindent 12 }}
           {{- with .Values.scheduling.userPlaceholder.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}

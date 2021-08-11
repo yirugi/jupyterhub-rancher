@@ -4,7 +4,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "jupyterhub.autohttps.fullname" . }}
+  name: autohttps
   labels:
     {{- include "jupyterhub.labels" . | nindent 4 }}
 spec:
@@ -17,8 +17,8 @@ spec:
       labels:
         {{- include "jupyterhub.matchLabels" . | nindent 8 }}
         hub.jupyter.org/network-access-proxy-http: "true"
-        {{- with .Values.proxy.traefik.labels }}
-        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- if .Values.proxy.traefik.labels }}
+        {{- .Values.proxy.traefik.labels | toYaml | trimSuffix "\n" | nindent 8 }}
         {{- end }}
       annotations:
         # Only force a restart through a change to this checksum when the static
@@ -28,23 +28,20 @@ spec:
         checksum/static-config: {{ include "jupyterhub.traefik.yaml" . | fromYaml | merge .Values.proxy.traefik.extraStaticConfig | toYaml | sha256sum }}
     spec:
       {{- if .Values.rbac.enabled }}
-      serviceAccountName: {{ include "jupyterhub.autohttps.fullname" . }}
+      serviceAccountName: autohttps
       {{- end }}
       {{- if .Values.scheduling.podPriority.enabled }}
-      priorityClassName: {{ include "jupyterhub.priority.fullname" . }}
+      priorityClassName: {{ .Release.Name }}-default-priority
       {{- end }}
       nodeSelector: {{ toJson .Values.proxy.traefik.nodeSelector }}
-      {{- with concat .Values.scheduling.corePods.tolerations .Values.proxy.traefik.tolerations }}
-      tolerations:
-        {{- . | toYaml | nindent 8 }}
-      {{- end }}
+      tolerations: {{ toJson .Values.proxy.traefik.tolerations }}
       {{- include "jupyterhub.coreAffinity" . | nindent 6 }}
       volumes:
         - name: certificates
           emptyDir: {}
         - name: traefik-config
           configMap:
-            name: {{ include "jupyterhub.autohttps.fullname" . }}
+            name: traefik-proxy-config
         {{- with .Values.proxy.traefik.extraVolumes }}
         {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
         {{- end }}
@@ -59,16 +56,14 @@ spec:
           {{- end }}
           args:
             - load
-            - {{ include "jupyterhub.proxy-public-tls.fullname" . }}
+            - proxy-public-tls-acme
             - acme.json
             - /etc/acme/acme.json
           env:
             # We need this to get logs immediately
             - name: PYTHONUNBUFFERED
               value: "True"
-            {{- with .Values.proxy.traefik.extraEnv }}
-            {{- include "jupyterhub.extraEnv" . | nindent 12 }}
-            {{- end }}
+            {{- include "jupyterhub.extraEnv" .Values.proxy.traefik.extraEnv | nindent 12 }}
           volumeMounts:
             - name: certificates
               mountPath: /etc/acme
@@ -82,10 +77,8 @@ spec:
           {{- with .Values.proxy.traefik.image.pullPolicy }}
           imagePullPolicy: {{ . }}
           {{- end }}
-          {{- with .Values.proxy.traefik.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- .Values.proxy.traefik.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080
@@ -121,7 +114,7 @@ spec:
             - --label=release={{ .Release.Name }}
             - --label=chart={{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
             - --label=heritage=secret-sync
-            - {{ include "jupyterhub.proxy-public-tls.fullname" . }}
+            - proxy-public-tls-acme
             - acme.json
             - /etc/acme/acme.json
           env:
@@ -135,7 +128,4 @@ spec:
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- end }}
-      {{- with .Values.proxy.traefik.extraPodSpec }}
-      {{- . | toYaml | trimSuffix "\n" | nindent 6 }}
-      {{- end }}
 {{- end }}

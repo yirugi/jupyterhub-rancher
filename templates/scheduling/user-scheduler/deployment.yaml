@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "jupyterhub.user-scheduler-deploy.fullname" . }}
+  name: user-scheduler
   labels:
     {{- include "jupyterhub.labels" . | nindent 4 }}
 spec:
@@ -18,27 +18,33 @@ spec:
         checksum/config-map: {{ include (print $.Template.BasePath "/scheduling/user-scheduler/configmap.yaml") . | sha256sum }}
     spec:
       {{- if .Values.rbac.enabled }}
-      serviceAccountName: {{ include "jupyterhub.user-scheduler-deploy.fullname" . }}
+      serviceAccountName: user-scheduler
       {{- end }}
       {{- if .Values.scheduling.podPriority.enabled }}
-      priorityClassName: {{ include "jupyterhub.priority.fullname" . }}
+      priorityClassName: {{ .Release.Name }}-default-priority
       {{- end }}
       nodeSelector: {{ toJson .Values.scheduling.userScheduler.nodeSelector }}
-      {{- with concat .Values.scheduling.corePods.tolerations .Values.scheduling.userScheduler.tolerations }}
-      tolerations:
-        {{- . | toYaml | nindent 8 }}
-      {{- end }}
+      tolerations: {{ toJson .Values.scheduling.userScheduler.tolerations }}
       {{- include "jupyterhub.coreAffinity" . | nindent 6 }}
       volumes:
         - name: config
           configMap:
-            name: {{ include "jupyterhub.user-scheduler-deploy.fullname" . }}
+            name: user-scheduler
       {{- with include "jupyterhub.imagePullSecrets" (dict "root" . "image" .Values.scheduling.userScheduler.image) }}
       imagePullSecrets: {{ . }}
       {{- end }}
       containers:
-        - name: kube-scheduler
+        - name: user-scheduler
+          # NOTE: When the kube-scheduler 1.17+ binaries fail to find CSINode
+          #       resource in the cluster, they won't start scheduling. Due to
+          #       this, we fallback to the latest functional version with its
+          #       legacy configuration format. This fallback can be removed when
+          #       we assume k8s 1.17 where CSINode is generally available.
+          {{- if .Capabilities.APIVersions.Has "storage.k8s.io/v1/CSINode" }}
           image: {{ .Values.scheduling.userScheduler.image.name }}:{{ .Values.scheduling.userScheduler.image.tag }}
+          {{- else }}
+          image: {{ .Values.scheduling.userScheduler.image.name }}:v1.16.15
+          {{- end }}
           {{- with .Values.scheduling.userScheduler.image.pullPolicy }}
           imagePullPolicy: {{ . }}
           {{- end }}
@@ -56,9 +62,16 @@ spec:
             #       "authentication lookup" in the future, see the linked issue.
             #
             # ref: https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/1894
+            {{- if .Capabilities.APIVersions.Has "storage.k8s.io/v1/CSINode" }}
             - --config=/etc/user-scheduler/config.yaml
             - --authentication-skip-lookup=true
-            - --v={{ .Values.scheduling.userScheduler.logLevel }}
+            {{- else }}
+            - --scheduler-name={{ .Release.Name }}-user-scheduler
+            - --policy-config-file=/etc/user-scheduler/policy.cfg
+            - --lock-object-name=user-scheduler-lock
+            - --lock-object-namespace={{ .Release.Namespace }}
+            {{- end }}
+            - --v={{ .Values.scheduling.userScheduler.logLevel | default 4 }}
           volumeMounts:
             - mountPath: /etc/user-scheduler
               name: config
@@ -71,15 +84,10 @@ spec:
             httpGet:
               path: /healthz
               port: 10251
-          {{- with .Values.scheduling.userScheduler.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- .Values.scheduling.userScheduler.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with .Values.scheduling.userScheduler.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- end }}
-      {{- with .Values.scheduling.userScheduler.extraPodSpec }}
-      {{- . | toYaml | trimSuffix "\n" | nindent 6 }}
-      {{- end }}
 {{- end }}

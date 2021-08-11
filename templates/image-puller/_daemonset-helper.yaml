@@ -7,11 +7,7 @@ Returns an image-puller daemonset. Two daemonsets will be created like this.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  {{- if .hook }}
-  name: {{ include "jupyterhub.hook-image-puller.fullname" . }}
-  {{- else }}
-  name: {{ include "jupyterhub.continuous-image-puller.fullname" . }}
-  {{- end }}
+  name: {{ print .componentPrefix "image-puller" }}
   labels:
     {{- include "jupyterhub.labels" . | nindent 4 }}
     {{- if .hook }}
@@ -48,13 +44,14 @@ spec:
         per node limit all k8s clusters have.
       */}}
       {{- if and (not .hook) .Values.scheduling.podPriority.enabled }}
-      priorityClassName: {{ include "jupyterhub.user-placeholder-priority.fullname" . }}
+      priorityClassName: {{ .Release.Name }}-user-placeholder-priority
       {{- end }}
-      nodeSelector: {{ toJson .Values.singleuser.nodeSelector }}
-      {{- with concat .Values.scheduling.userPods.tolerations .Values.singleuser.extraTolerations .Values.prePuller.extraTolerations }}
       tolerations:
-        {{- . | toYaml | nindent 8 }}
-      {{- end }}
+        {{- include "jupyterhub.userTolerations" . | nindent 8 }}
+        {{- with .Values.prePuller.extraTolerations  }}
+        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
+      nodeSelector: {{ toJson .Values.singleuser.nodeSelector }}
       {{- if include "jupyterhub.userNodeAffinityRequired" . }}
       affinity:
         nodeAffinity:
@@ -80,10 +77,8 @@ spec:
             - /bin/sh
             - -c
             - echo "Pulling complete"
-          {{- with .Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- .Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with .Values.prePuller.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
@@ -97,27 +92,23 @@ spec:
             - /bin/sh
             - -c
             - echo "Pulling complete"
-          {{- with .Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- .Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with .Values.prePuller.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- end }}
 
         {{- /* --- Pull extra containers' images --- */}}
-        {{- range $k, $container := concat .Values.singleuser.initContainers .Values.singleuser.extraContainers }}
-        - name: image-pull-singleuser-init-and-extra-containers-{{ $k }}
+        {{- range $k, $container := .Values.singleuser.extraContainers }}
+        - name: image-pull-singleuser-extra-container-{{ $k }}
           image: {{ $container.image }}
           command:
             - /bin/sh
             - -c
             - echo "Pulling complete"
-          {{- with $.Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- $.Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with $.Values.prePuller.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
@@ -135,10 +126,8 @@ spec:
             - /bin/sh
             - -c
             - echo "Pulling complete"
-          {{- with $.Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- $.Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with $.Values.prePuller.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
@@ -156,10 +145,8 @@ spec:
             - /bin/sh
             - -c
             - echo "Pulling complete"
-          {{- with $.Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- $.Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with $.Values.prePuller.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
@@ -168,77 +155,10 @@ spec:
       containers:
         - name: pause
           image: {{ .Values.prePuller.pause.image.name }}:{{ .Values.prePuller.pause.image.tag }}
-          {{- with .Values.prePuller.resources }}
           resources:
-            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
-          {{- end }}
+            {{- .Values.prePuller.resources | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- with .Values.prePuller.pause.containerSecurityContext }}
           securityContext:
             {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- end }}
-{{- end }}
-
-
-{{- /*
-    Returns a rendered k8s DaemonSet resource: continuous-image-puller
-*/}}
-{{- define "jupyterhub.imagePuller.daemonset.continuous" -}}
-    {{- $_ := merge (dict "hook" false "componentPrefix" "continuous-") . }}
-    {{- include "jupyterhub.imagePuller.daemonset" $_ }}
-{{- end }}
-
-
-{{- /*
-    Returns a rendered k8s DaemonSet resource: hook-image-puller
-*/}}
-{{- define "jupyterhub.imagePuller.daemonset.hook" -}}
-    {{- $_ := merge (dict "hook" true "componentPrefix" "hook-") . }}
-    {{- include "jupyterhub.imagePuller.daemonset" $_ }}
-{{- end }}
-
-
-{{- /*
-    Returns a checksum of the rendered k8s DaemonSet resource: hook-image-puller
-
-    This checksum is used when prePuller.hook.pullOnlyOnChanges=true to decide if
-    it is worth creating the hook-image-puller associated resources.
-*/}}
-{{- define "jupyterhub.imagePuller.daemonset.hook.checksum" -}}
-    {{- /*
-        We pin componentLabel and Chart.Version as doing so can pin labels
-        of no importance if they would change. Chart.Name is also pinned as
-        a harmless technical workaround when we compute the checksum.
-    */}}
-    {{- $_ := merge (dict "componentLabel" "pinned" "Chart" (dict "Name" "jupyterhub" "Version" "pinned")) . -}}
-    {{- $yaml := include "jupyterhub.imagePuller.daemonset.hook" $_ }}
-    {{- $yaml | sha256sum }}
-{{- end }}
-
-
-{{- /*
-    Returns a truthy string or a blank string depending on if the
-    hook-image-puller should be installed. The truthy strings are comments
-    that summarize the state that led to returning a truthy string.
-
-    - prePuller.hook.enabled must be true
-    - if prePuller.hook.pullOnlyOnChanges is true, the checksum of the
-      hook-image-puller daemonset must differ since last upgrade
-*/}}
-{{- define "jupyterhub.imagePuller.daemonset.hook.install" -}}
-    {{- if .Values.prePuller.hook.enabled }}
-        {{- if .Values.prePuller.hook.pullOnlyOnChanges }}
-            {{- $new_checksum := include "jupyterhub.imagePuller.daemonset.hook.checksum" . }}
-            {{- $k8s_state := lookup "v1" "ConfigMap" .Release.Namespace (include "jupyterhub.hub.fullname" .) | default (dict "data" (dict)) }}
-            {{- $old_checksum := index $k8s_state.data "checksum_hook-image-puller" | default "" }}
-            {{- if ne $new_checksum $old_checksum -}}
-# prePuller.hook.enabled={{ .Values.prePuller.hook.enabled }}
-# prePuller.hook.pullOnlyOnChanges={{ .Values.prePuller.hook.pullOnlyOnChanges }}
-# post-upgrade checksum != pre-upgrade checksum (of the hook-image-puller DaemonSet)
-# "{{ $new_checksum }}" != "{{ $old_checksum}}"
-            {{- end }}
-        {{- else -}}
-# prePuller.hook.enabled={{ .Values.prePuller.hook.enabled }}
-# prePuller.hook.pullOnlyOnChanges={{ .Values.prePuller.hook.pullOnlyOnChanges }}
-        {{- end }}
-    {{- end }}
 {{- end }}

@@ -2,7 +2,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{ include "jupyterhub.user-scheduler-deploy.fullname" . }}
+  name: user-scheduler
   labels:
     {{- include "jupyterhub.labels" . | nindent 4 }}
 data:
@@ -12,10 +12,13 @@ data:
     kind: KubeSchedulerConfiguration
     leaderElection:
       resourceLock: endpoints
-      resourceName: {{ include "jupyterhub.user-scheduler-lock.fullname" . }}
-      resourceNamespace: "{{ .Release.Namespace }}"
+      resourceName: user-scheduler-lock
+      resourceNamespace: {{ .Release.Namespace }}
     profiles:
-      - schedulerName: {{ include "jupyterhub.user-scheduler.fullname" . }}
+      - schedulerName: {{ .Release.Name }}-user-scheduler
         plugins:
           {{- .Values.scheduling.userScheduler.plugins | toYaml | trimSuffix "\n" | nindent 10 }}
+
+  {{- $defaultPolicy := .Files.Get "files/userscheduler-defaultpolicy.yaml" | fromYaml }}
+  policy.cfg: {{ .Values.scheduling.userScheduler.policy | default $defaultPolicy | toJson | quote }}
 {{- end }}

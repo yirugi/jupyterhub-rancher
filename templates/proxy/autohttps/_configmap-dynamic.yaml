@@ -19,7 +19,7 @@ http:
       headers:
         stsIncludeSubdomains: {{ .Values.proxy.traefik.hsts.includeSubdomains }}
         stsPreload: {{ .Values.proxy.traefik.hsts.preload }}
-        stsSeconds: {{ .Values.proxy.traefik.hsts.maxAge }}
+        stsSeconds: {{ .Values.proxy.traefik.hsts.maxAge | int64 }}
     # A middleware to redirect to https
     redirect:
       redirectScheme:

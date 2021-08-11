@@ -4,11 +4,11 @@
 {{- $manualHTTPSwithsecret := and $enabled (eq .Values.proxy.https.type "secret") -}}
 {{- $offloadHTTPS := and $enabled (eq .Values.proxy.https.type "offload") -}}
 {{- $valid := or $autoHTTPS (or $manualHTTPS (or $manualHTTPSwithsecret $offloadHTTPS)) -}}
-{{- $HTTPS := and $enabled $valid -}}
+{{- $HTTPS := and $enabled $valid  -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "jupyterhub.proxy-api.fullname" . }}
+  name: proxy-api
   labels:
     {{- $_ := merge (dict "componentSuffix" "-api") . }}
     {{- include "jupyterhub.labels" $_ | nindent 4 }}
@@ -22,16 +22,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "jupyterhub.proxy-public.fullname" . }}
+  name: proxy-public
   labels:
     {{- $_ := merge (dict "componentSuffix" "-public") . }}
     {{- include "jupyterhub.labels" $_ | nindent 4 }}
-    {{- with .Values.proxy.service.labels }}
-    {{- . | toYaml | trimSuffix "\n" | nindent 4 }}
+    {{- if .Values.proxy.service.labels }}
+    {{- .Values.proxy.service.labels | toYaml | trimSuffix "\n" | nindent 4 }}
     {{- end }}
-  {{- with .Values.proxy.service.annotations }}
+  {{- if .Values.proxy.service.annotations }}
   annotations:
-    {{- . | toYaml | trimSuffix "\n" | nindent 4 }}
+    {{- .Values.proxy.service.annotations | toYaml | trimSuffix "\n" | nindent 4 }}
   {{- end }}
 spec:
   selector:
@@ -57,14 +57,12 @@ spec:
       nodePort: {{ . }}
       {{- end }}
     {{- end }}
-    {{- if ne .Values.proxy.service.disableHttpPort true }}
     - name: http
       port: 80
       targetPort: http
       {{- with .Values.proxy.service.nodePorts.http }}
       nodePort: {{ . }}
       {{- end }}
-    {{- end }}
     {{- with .Values.proxy.service.extraPorts }}
     {{- . | toYaml | trimSuffix "\n" | nindent 4 }}
     {{- end }}

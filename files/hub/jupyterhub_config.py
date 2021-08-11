@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 import sys
@@ -13,13 +12,7 @@ from jupyterhub.utils import url_path_join
 configuration_directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, configuration_directory)
 
-from z2jh import (
-    get_config,
-    set_config_if_not_none,
-    get_name,
-    get_name_env,
-    get_secret_value,
-)
+from z2jh import get_config, set_config_if_not_none
 
 
 def camelCaseify(s):
@@ -42,7 +35,7 @@ c.JupyterHub.spawner_class = "kubespawner.KubeSpawner"
 # Connect to a proxy running in a different pod. Note that *_SERVICE_*
 # environment variables are set by Kubernetes for Services
 c.ConfigurableHTTPProxy.api_url = (
-    f'http://{get_name("proxy-api")}:{get_name_env("proxy-api", "_SERVICE_PORT")}'
+    f"http://proxy-api:{os.environ['PROXY_API_SERVICE_PORT']}"
 )
 c.ConfigurableHTTPProxy.should_start = False
 
@@ -66,14 +59,6 @@ elif db_type == "sqlite-memory":
     c.JupyterHub.db_url = "sqlite://"
 else:
     set_config_if_not_none(c.JupyterHub, "db_url", "hub.db.url")
-db_password = get_secret_value("hub.db.password", None)
-if db_password is not None:
-    if db_type == "mysql":
-        os.environ["MYSQL_PWD"] = db_password
-    elif db_type == "postgres":
-        os.environ["PGPASSWORD"] = db_password
-    else:
-        print(f"Warning: hub.db.password is ignored for hub.db.type={db_type}")
 
 
 # c.JupyterHub configuration from Helm chart's configmap
@@ -81,6 +66,7 @@ for trait, cfg_key in (
     ("concurrent_spawn_limit", None),
     ("active_server_limit", None),
     ("base_url", None),
+    # ('cookie_secret', None),  # requires a Hex -> Byte transformation
     ("allow_named_servers", None),
     ("named_server_limit_per_user", None),
     ("authenticate_prometheus", None),
@@ -93,6 +79,11 @@ for trait, cfg_key in (
         cfg_key = camelCaseify(trait)
     set_config_if_not_none(c.JupyterHub, trait, "hub." + cfg_key)
 
+# a required Hex -> Byte transformation
+cookie_secret_hex = get_config("hub.cookieSecret")
+if cookie_secret_hex:
+    c.JupyterHub.cookie_secret = a2b_hex(cookie_secret_hex)
+
 # hub_bind_url configures what the JupyterHub process within the hub pod's
 # container should listen to.
 hub_container_port = 8081
@@ -101,9 +92,7 @@ c.JupyterHub.hub_bind_url = f"http://:{hub_container_port}"
 # hub_connect_url is the URL for connecting to the hub for use by external
 # JupyterHub services such as the proxy. Note that *_SERVICE_* environment
 # variables are set by Kubernetes for Services.
-c.JupyterHub.hub_connect_url = (
-    f'http://{get_name("hub")}:{get_name_env("hub", "_SERVICE_PORT")}'
-)
+c.JupyterHub.hub_connect_url = f"http://hub:{os.environ['HUB_SERVICE_PORT']}"
 
 # implement common labels
 # this duplicates the jupyterhub.commonLabels helper
@@ -146,7 +135,7 @@ for trait, cfg_key in (
     ("fs_gid", None),
     ("service_account", "serviceAccountName"),
     ("storage_extra_labels", "storage.extraLabels"),
-    # ("tolerations", "extraTolerations"), # Managed manually below
+    ("tolerations", "extraTolerations"),
     ("node_selector", None),
     ("node_affinity_required", "extraNodeAffinity.required"),
     ("node_affinity_preferred", "extraNodeAffinity.preferred"),
@@ -182,10 +171,10 @@ if image:
 # Combine imagePullSecret.create (single), imagePullSecrets (list), and
 # singleuser.image.pullSecrets (list).
 image_pull_secrets = []
-if get_config("imagePullSecret.automaticReferenceInjection") and get_config(
-    "imagePullSecret.create"
+if get_config("imagePullSecret.automaticReferenceInjection") and (
+    get_config("imagePullSecret.create") or get_config("imagePullSecret.enabled")
 ):
-    image_pull_secrets.append(get_name("image-pull-secret"))
+    image_pull_secrets.append("image-pull-secret")
 if get_config("imagePullSecrets"):
     image_pull_secrets.extend(get_config("imagePullSecrets"))
 if get_config("singleuser.image.pullSecrets"):
@@ -195,9 +184,11 @@ if image_pull_secrets:
 
 # scheduling:
 if get_config("scheduling.userScheduler.enabled"):
-    c.KubeSpawner.scheduler_name = get_name("user-scheduler")
+    c.KubeSpawner.scheduler_name = os.environ["HELM_RELEASE_NAME"] + "-user-scheduler"
 if get_config("scheduling.podPriority.enabled"):
-    c.KubeSpawner.priority_class_name = get_name("priority")
+    c.KubeSpawner.priority_class_name = (
+        os.environ["HELM_RELEASE_NAME"] + "-default-priority"
+    )
 
 # add node-purpose affinity
 match_node_purpose = get_config("scheduling.userPods.nodeAffinity.matchNodePurpose")
@@ -227,15 +218,24 @@ if match_node_purpose:
             "Unrecognized value for matchNodePurpose: %r" % match_node_purpose
         )
 
-# Combine the common tolerations for user pods with singleuser tolerations
-scheduling_user_pods_tolerations = get_config("scheduling.userPods.tolerations", [])
-singleuser_extra_tolerations = get_config("singleuser.extraTolerations", [])
-tolerations = scheduling_user_pods_tolerations + singleuser_extra_tolerations
-if tolerations:
-    c.KubeSpawner.tolerations = tolerations
+# add dedicated-node toleration
+for key in (
+    "hub.jupyter.org/dedicated",
+    # workaround GKE not supporting / in initial node taints
+    "hub.jupyter.org_dedicated",
+):
+    c.KubeSpawner.tolerations.append(
+        dict(
+            key=key,
+            operator="Equal",
+            value="user",
+            effect="NoSchedule",
+        )
+    )
 
 # Configure dynamically provisioning pvc
 storage_type = get_config("singleuser.storage.type")
+
 if storage_type == "dynamic":
     pvc_name_template = get_config("singleuser.storage.dynamic.pvcNameTemplate")
     c.KubeSpawner.pvc_name_template = pvc_name_template
@@ -280,47 +280,159 @@ elif storage_type == "static":
         }
     ]
 
-# Inject singleuser.extraFiles as volumes and volumeMounts with data loaded from
-# the dedicated k8s Secret prepared to hold the extraFiles actual content.
-extra_files = get_config("singleuser.extraFiles", {})
-if extra_files:
-    volume = {
-        "name": "files",
-    }
-    items = []
-    for file_key, file_details in extra_files.items():
-        # Each item is a mapping of a key in the k8s Secret to a path in this
-        # abstract volume, the goal is to enable us to set the mode /
-        # permissions only though so we don't change the mapping.
-        item = {
-            "key": file_key,
-            "path": file_key,
-        }
-        if "mode" in file_details:
-            item["mode"] = file_details["mode"]
-        items.append(item)
-    volume["secret"] = {
-        "secretName": get_name("singleuser"),
-        "items": items,
-    }
-    c.KubeSpawner.volumes.append(volume)
-
-    volume_mounts = []
-    for file_key, file_details in extra_files.items():
-        volume_mounts.append(
-            {
-                "mountPath": file_details["mountPath"],
-                "subPath": file_key,
-                "name": "files",
-            }
-        )
-    c.KubeSpawner.volume_mounts.extend(volume_mounts)
-
-# Inject extraVolumes / extraVolumeMounts
 c.KubeSpawner.volumes.extend(get_config("singleuser.storage.extraVolumes", []))
 c.KubeSpawner.volume_mounts.extend(
     get_config("singleuser.storage.extraVolumeMounts", [])
 )
+
+# Allow switching authenticators easily
+auth_type = get_config("auth.type")
+email_domain = "local"
+
+common_oauth_traits = (
+    ("client_id", None),
+    ("client_secret", None),
+    ("oauth_callback_url", "callbackUrl"),
+)
+
+if auth_type == "google":
+    c.JupyterHub.authenticator_class = "oauthenticator.GoogleOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (
+        ("hosted_domain", None),
+        ("login_service", None),
+    ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(c.GoogleOAuthenticator, trait, "auth.google." + cfg_key)
+    email_domain = get_config("auth.google.hostedDomain")
+elif auth_type == "github":
+    c.JupyterHub.authenticator_class = "oauthenticator.github.GitHubOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (
+        ("allowed_organizations", "orgWhitelist"),  # deprecated
+        ("allowed_organizations", None),
+    ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(c.GitHubOAuthenticator, trait, "auth.github." + cfg_key)
+elif auth_type == "cilogon":
+    c.JupyterHub.authenticator_class = "oauthenticator.CILogonOAuthenticator"
+    for trait, cfg_key in common_oauth_traits:
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(
+            c.CILogonOAuthenticator, trait, "auth.cilogon." + cfg_key
+        )
+elif auth_type == "gitlab":
+    c.JupyterHub.authenticator_class = "oauthenticator.gitlab.GitLabOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (
+        ("gitlab_group_whitelist", None),           # deprecated
+        ("allowed_gitlab_groups", None),
+        ("gitlab_project_id_whitelist", None),      # deprecated
+        ("allowed_project_ids", None),
+        ("gitlab_url", None),
+    ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(c.GitLabOAuthenticator, trait, "auth.gitlab." + cfg_key)
+elif auth_type == "azuread":
+    c.JupyterHub.authenticator_class = "oauthenticator.azuread.AzureAdOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (
+        ("tenant_id", None),
+        ("username_claim", None),
+    ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+
+        set_config_if_not_none(
+            c.AzureAdOAuthenticator, trait, "auth.azuread." + cfg_key
+        )
+elif auth_type == "mediawiki":
+    c.JupyterHub.authenticator_class = "oauthenticator.mediawiki.MWOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (("index_url", None),):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(c.MWOAuthenticator, trait, "auth.mediawiki." + cfg_key)
+elif auth_type == "globus":
+    c.JupyterHub.authenticator_class = "oauthenticator.globus.GlobusOAuthenticator"
+    for trait, cfg_key in common_oauth_traits + (("identity_provider", None),):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
+        set_config_if_not_none(c.GlobusOAuthenticator, trait, "auth.globus." + cfg_key)
+elif auth_type == "hmac":
+    c.JupyterHub.authenticator_class = "hmacauthenticator.HMACAuthenticator"
+    c.HMACAuthenticator.secret_key = bytes.fromhex(get_config("auth.hmac.secretKey"))
+elif auth_type == "dummy":
+    c.JupyterHub.authenticator_class = "dummyauthenticator.DummyAuthenticator"
+    set_config_if_not_none(c.DummyAuthenticator, "password", "auth.dummy.password")
+elif auth_type == "tmp":
+    c.JupyterHub.authenticator_class = "tmpauthenticator.TmpAuthenticator"
+elif auth_type == "lti":
+    c.JupyterHub.authenticator_class = "ltiauthenticator.LTIAuthenticator"
+    set_config_if_not_none(c.LTIAuthenticator, "consumers", "auth.lti.consumers")
+elif auth_type == "ldap":
+    c.JupyterHub.authenticator_class = "ldapauthenticator.LDAPAuthenticator"
+    c.LDAPAuthenticator.server_address = get_config("auth.ldap.server.address")
+    set_config_if_not_none(c.LDAPAuthenticator, "server_port", "auth.ldap.server.port")
+    set_config_if_not_none(c.LDAPAuthenticator, "use_ssl", "auth.ldap.server.ssl")
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "allowed_groups", "auth.ldap.allowedGroups"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "bind_dn_template", "auth.ldap.dn.templates"
+    )
+    set_config_if_not_none(c.LDAPAuthenticator, "lookup_dn", "auth.ldap.dn.lookup")
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "lookup_dn_search_filter", "auth.ldap.dn.search.filter"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "lookup_dn_search_user", "auth.ldap.dn.search.user"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "lookup_dn_search_password", "auth.ldap.dn.search.password"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator,
+        "lookup_dn_user_dn_attribute",
+        "auth.ldap.dn.user.dnAttribute",
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "escape_userdn", "auth.ldap.dn.user.escape"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "valid_username_regex", "auth.ldap.dn.user.validRegex"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "user_search_base", "auth.ldap.dn.user.searchBase"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "user_attribute", "auth.ldap.dn.user.attribute"
+    )
+    set_config_if_not_none(
+        c.LDAPAuthenticator, "use_lookup_dn_username", "auth.ldap.dn.user.useLookupName"
+    )
+elif auth_type == "custom":
+    # full_class_name looks like "myauthenticator.MyAuthenticator".
+    # To create a docker image with this class availabe, you can just have the
+    # following Dockerfile:
+    #   FROM jupyterhub/k8s-hub:v0.4
+    #   RUN pip3 install myauthenticator
+    full_class_name = get_config("auth.custom.className")
+    c.JupyterHub.authenticator_class = full_class_name
+    auth_class_name = full_class_name.rsplit(".", 1)[-1]
+    auth_config = c[auth_class_name]
+    auth_config.update(get_config("auth.custom.config") or {})
+else:
+    raise ValueError("Unhandled auth type: %r" % auth_type)
+
+set_config_if_not_none(c.OAuthenticator, "scope", "auth.scopes")
+
+set_config_if_not_none(c.Authenticator, "enable_auth_state", "auth.state.enabled")
+
+# Enable admins to access user servers
+set_config_if_not_none(c.JupyterHub, "admin_access", "auth.admin.access")
+set_config_if_not_none(c.Authenticator, "admin_users", "auth.admin.users")
+set_config_if_not_none(c.Authenticator, "allowed_users", "auth.whitelist.users")
+set_config_if_not_none(c.Authenticator, "allowed_users", "auth.allowedUsers")
 
 c.JupyterHub.services = []
 
@@ -359,16 +471,14 @@ if get_config("cull.enabled", False):
         }
     )
 
-for key, service in get_config("hub.services", {}).items():
-    # c.JupyterHub.services is a list of dicts, but
-    # hub.services is a dict of dicts to make the config mergable
-    service.setdefault("name", key)
-
-    # As the api_token could be exposed in hub.existingSecret, we need to read
-    # it it from there or fall back to the chart managed k8s Secret's value.
-    service.pop("apiToken", None)
-    service["api_token"] = get_secret_value(f"hub.services.{key}.apiToken")
-
+for name, service in get_config("hub.services", {}).items():
+    # jupyterhub.services is a list of dicts, but
+    # in the helm chart it is a dict of dicts for easier merged-config
+    service.setdefault("name", name)
+    # handle camelCase->snake_case of api_token
+    api_token = service.pop("apiToken", None)
+    if api_token:
+        service["api_token"] = api_token
     c.JupyterHub.services.append(service)
 
 
@@ -377,7 +487,7 @@ set_config_if_not_none(c.Spawner, "default_url", "singleuser.defaultUrl")
 
 cloud_metadata = get_config("singleuser.cloudMetadata", {})
 
-if cloud_metadata.get("blockWithIptables") == True:
+if cloud_metadata.get("block") == True or cloud_metadata.get("enabled") == False:
     # Use iptables to block access to cloud metadata by default
     network_tools_image_name = get_config("singleuser.networkTools.image.name")
     network_tools_image_tag = get_config("singleuser.networkTools.image.tag")
@@ -407,40 +517,37 @@ if get_config("debug.enabled", False):
     c.JupyterHub.log_level = "DEBUG"
     c.Spawner.debug = True
 
-# load /usr/local/etc/jupyterhub/jupyterhub_config.d config files
-config_dir = "/usr/local/etc/jupyterhub/jupyterhub_config.d"
-if os.path.isdir(config_dir):
-    for file_path in sorted(glob.glob(f"{config_dir}/*.py")):
-        file_name = os.path.basename(file_path)
-        print(f"Loading {config_dir} config: {file_name}")
-        with open(file_path) as f:
-            file_content = f.read()
-        # compiling makes debugging easier: https://stackoverflow.com/a/437857
-        exec(compile(source=file_content, filename=file_name, mode="exec"))
 
-# load potentially seeded secrets
-#
-# NOTE: ConfigurableHTTPProxy.auth_token is set through an environment variable
-#       that is set using the chart managed secret.
-c.JupyterHub.cookie_secret = get_secret_value("hub.config.JupyterHub.cookie_secret")
-# NOTE: CryptKeeper.keys should be a list of strings, but we have encoded as a
-#       single string joined with ; in the k8s Secret.
-#
-c.CryptKeeper.keys = get_secret_value("hub.config.CryptKeeper.keys").split(";")
+extra_config = get_config("hub.extraConfig", {})
+if isinstance(extra_config, str):
+    from textwrap import indent, dedent
 
-# load hub.config values, except potentially seeded secrets already loaded
-for app, cfg in get_config("hub.config", {}).items():
-    if app == "JupyterHub":
-        cfg.pop("proxy_auth_token", None)
-        cfg.pop("cookie_secret", None)
-        cfg.pop("services", None)
-    elif app == "ConfigurableHTTPProxy":
-        cfg.pop("auth_token", None)
-    elif app == "CryptKeeper":
-        cfg.pop("keys", None)
-    c[app].update(cfg)
+    msg = dedent(
+        """
+    hub.extraConfig should be a dict of strings,
+    but found a single string instead.
 
-# execute hub.extraConfig entries
-for key, config_py in sorted(get_config("hub.extraConfig", {}).items()):
+    extraConfig as a single string is deprecated
+    as of the jupyterhub chart version 0.6.
+
+    The keys can be anything identifying the
+    block of extra configuration.
+
+    Try this instead:
+
+        hub:
+          extraConfig:
+            myConfig: |
+              {}
+
+    This configuration will still be loaded,
+    but you are encouraged to adopt the nested form
+    which enables easier merging of multiple extra configurations.
+    """
+    )
+    print(msg.format(indent(extra_config, " " * 10).lstrip()), file=sys.stderr)
+    extra_config = {"deprecated string": extra_config}
+
+for key, config_py in sorted(extra_config.items()):
     print("Loading extra config: %s" % key)
     exec(config_py)
