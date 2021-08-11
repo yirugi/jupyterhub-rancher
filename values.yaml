@@ -286,28 +286,18 @@ auth:
       - schwarz6
   type: ldap
   ldap:
-    bind_dn_template:
-      - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
-    server:
-      address: geddes-aux.rcac.purdue.edu
-      port: 636
-      ssl: True
-    dn:
-      lookup: false
-     # search:
-     #   filter: '({login_attr}={login})'
-     #   user: 'uid=rcacadm,ou=People,dc=rcac,dc=purdue,dc=edu'
-     #   password: 'SECRET'
-      templates:
-        - 'uid={username},ou=People,dc=rcac,dc=purdue,dc=edu'
-      user:
-        searchBase: 'ou=People,dc=rcac,dc=purdue,dc=edu'
-        escape: False
-        attribute: 'account'
-        dnAttribute: 'uid'
-    allowedGroups: []
-#      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
-#      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
+    allowed_groups: 
+        - cn=rcacengs,ou=Group,dc=rcac,dc=purdue,dc=edu
+      bind_dn_template:
+        - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
+      escape_userdn: false
+      lookup_dn: false
+      lookup_dn_user_dn_attribute: uid
+      server_address: geddes-aux.rcac.purdue.edu
+      server_port: 636
+      use_ssl: true
+      user_attribute: account
+      user_search_base: ou=People,dc=rcac,dc=purdue,dc=edu
   state:
     enabled: false
     cryptoKey:
