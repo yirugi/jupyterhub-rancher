@@ -288,19 +288,23 @@ auth:
     server:
       address: geddes-aux.rcac.purdue.edu
       port: 636
-    allowedGroups: 
-      - cn=rcacengs,ou=Group,dc=rcac,dc=purdue,dc=edu
-    lookup: false
-    lookup_dn_user_dn_attribute: uid
-    bind_dn_template:
-      - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
-    user:
-      searchBase: ou=People,dc=rcac,dc=purdue,dc=edu
-      escape: False
-      attribute: account
-  state:
-    enabled: false
-    cryptoKey:
+      ssl: True
+    dn:
+      lookup: false
+     # search:
+     #   filter: '({login_attr}={login})'
+     #   user: 'uid=rcacadm,ou=People,dc=rcac,dc=purdue,dc=edu'
+     #   password: 'SECRET'
+      templates:
+        - 'uid={username},ou=People,dc=rcac,dc=purdue,dc=edu'
+      user:
+        searchBase: 'ou=People,dc=rcac,dc=purdue,dc=edu'
+        escape: False
+        attribute: 'account'
+        dnAttribute: 'uid'
+    allowedGroups: []
+#      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
+#      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
 
 
 # singleuser relates to the configuration of KubeSpawner which runs in the hub
