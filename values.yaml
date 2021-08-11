@@ -129,7 +129,7 @@ rbac:
 # proxy relates to the proxy pod, the proxy-public service, and the autohttps
 # pod and proxy-http service.
 proxy:
-  secretToken: ''
+  secretToken: "3871a03d769c51a7b6f17b7888d07bcebe13bcbc0eb3b9a1f12a67b2463c4f94"
   annotations: {}
   deploymentStrategy:
     ## type: Recreate
@@ -277,23 +277,28 @@ proxy:
 
 # auth relates to the configuration of JupyterHub's Authenticator class.
 auth:
-  type: dummy
+  type: ldapauthenticator.LDAPAuthenticator
   whitelist:
     users:
   admin:
     access: true
     users:
-  dummy:
-    password:
-  ldap:
-    dn:
-      search: {}
-      user: {}
-    user: {}
+    - tayl1055
   state:
     enabled: false
     cryptoKey:
-
+  LDAPAuthenticator:
+      allowed_groups: []
+      bind_dn_template:
+        - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
+      escape_userdn: false
+      lookup_dn: false
+      lookup_dn_user_dn_attribute: uid
+      server_address: geddes-aux.rcac.purdue.edu
+      server_port: 636
+      use_ssl: true
+      user_attribute: account
+      user_search_base: ou=People,dc=rcac,dc=purdue,dc=edu
 
 # singleuser relates to the configuration of KubeSpawner which runs in the hub
 # pod, and its spawning of user pods such as jupyter-myusername.
