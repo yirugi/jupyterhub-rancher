@@ -1,9 +1,9 @@
-{{- $enabled := .Values.proxy.https.enabled -}}
-{{- $autoHTTPS := and $enabled (and (eq .Values.proxy.https.type "letsencrypt") .Values.proxy.https.hosts) -}}
-{{- $manualHTTPS := and $enabled (eq .Values.proxy.https.type "manual") -}}
-{{- $manualHTTPSwithsecret := and $enabled (eq .Values.proxy.https.type "secret") -}}
-{{- $offloadHTTPS := and $enabled (eq .Values.proxy.https.type "offload") -}}
-{{- $valid := or $autoHTTPS (or $manualHTTPS (or $manualHTTPSwithsecret $offloadHTTPS)) -}}
+#{{- $enabled := .Values.proxy.https.enabled -}}
+#{{- $autoHTTPS := and $enabled (and (eq .Values.proxy.https.type "letsencrypt") .Values.proxy.https.hosts) -}}
+#{{- $manualHTTPS := and $enabled (eq .Values.proxy.https.type "manual") -}}
+#{{- $manualHTTPSwithsecret := and $enabled (eq .Values.proxy.https.type "secret") -}}
+#{{- $offloadHTTPS := and $enabled (eq .Values.proxy.https.type "offload") -}}
+#{{- $valid := or $autoHTTPS (or $manualHTTPS (or $manualHTTPSwithsecret $offloadHTTPS)) -}}
 #{{- $HTTPS := and $enabled $valid  -}}
 apiVersion: v1
 kind: Service
