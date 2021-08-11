@@ -277,28 +277,30 @@ proxy:
 
 # auth relates to the configuration of JupyterHub's Authenticator class.
 auth:
-  type: ldapauthenticator.LDAPAuthenticator
+  type: ldap
   whitelist:
     users:
   admin:
     access: true
     users:
     - tayl1055
+  ldap:
+    server:
+      address: geddes-aux.rcac.purdue.edu
+      port: 636
+    allowedGroups: 
+      - cn=rcacengs,ou=Group,dc=rcac,dc=purdue,dc=edu
+    lookup: false
+    templates:
+      - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
+    user:
+      searchBase: ou=People,dc=rcac,dc=purdue,dc=edu
+      escape: False
+      attribute: account
   state:
     enabled: false
     cryptoKey:
-  LDAPAuthenticator:
-      allowed_groups: []
-      bind_dn_template:
-        - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
-      escape_userdn: false
-      lookup_dn: false
-      lookup_dn_user_dn_attribute: uid
-      server_address: geddes-aux.rcac.purdue.edu
-      server_port: 636
-      use_ssl: true
-      user_attribute: account
-      user_search_base: ou=People,dc=rcac,dc=purdue,dc=edu
+
 
 # singleuser relates to the configuration of KubeSpawner which runs in the hub
 # pod, and its spawning of user pods such as jupyter-myusername.
