@@ -286,6 +286,8 @@ auth:
       - schwarz6
   type: ldap
   ldap:
+    bind_dn_template:
+      - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
     server:
       address: geddes-aux.rcac.purdue.edu
       port: 636
