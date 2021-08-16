@@ -11,7 +11,6 @@
     { "name": "MaxEBSVolumeCount" },
     { "name": "MaxGCEPDVolumeCount" },
     { "name": "MaxAzureDiskVolumeCount" },
-    { "name": "MaxCSIVolumeCountPred" },
     { "name": "CheckVolumeBinding" },
     { "name": "NoVolumeZoneConflict" },
     { "name": "MatchInterPodAffinity" }

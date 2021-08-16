@@ -11,19 +11,20 @@ metadata:
     {{- if not (index .Values.hub.service.annotations "prometheus.io/path") }}
     prometheus.io/path: {{ .Values.hub.baseUrl }}hub/metrics
     {{- end }}
-    {{- with .Values.hub.service.annotations }}
-    {{- . | toYaml | nindent 4 }}
+    {{- if .Values.hub.service.annotations }}
+    {{- .Values.hub.service.annotations | toYaml | nindent 4 }}
     {{- end }}
 spec:
   type: {{ .Values.hub.service.type }}
-  {{- with .Values.hub.service.loadBalancerIP }}
-  loadBalancerIP: {{ . }}
+  {{- if .Values.hub.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.hub.service.loadBalancerIP }}
   {{- end }}
   selector:
     {{- include "jupyterhub.matchLabels" . | nindent 4 }}
   ports:
-    - port: 8081
-      targetPort: http
-      {{- with .Values.hub.service.ports.nodePort }}
-      nodePort: {{ . }}
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+      {{- if .Values.hub.service.ports.nodePort }}
+      nodePort: {{ .Values.hub.service.ports.nodePort }}
       {{- end }}
