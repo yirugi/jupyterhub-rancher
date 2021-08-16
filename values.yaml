@@ -1,30 +1,5 @@
 custom: {}
 
-singleuser:
-    memory:
-        limit: 1G
-        guarantee: 1G
-    cpu:
-        limit: .5
-        guarantee: .5
-    image:
-        name: jupyter/minimal-notebook
-        tag: latest
-    profileList:
-        - display_name: "Minimal environment"
-          description: "To avoid too much bells and whistles: Python."
-          default: true
-        - display_name: "R-notebook"
-          description: "Notebook with R language"
-          memory:
-            limit: 2G
-            guarantee: 1G
-          cpu:
-            limit: 1.0
-            guarantee: .5
-          kubespawner_override:
-            image: jupyter/r-notebook:latest
-
 hub:
   service:
     type: ClusterIP
@@ -119,6 +94,8 @@ rbac:
 
 
 proxy:
+  https:
+    enabled: false
   secretToken: "3871a03d769c51a7b6f17b7888d07bcebe13bcbc0eb3b9a1f12a67b2463c4f94"
   deploymentStrategy:
     ## type: Recreate
@@ -303,12 +280,6 @@ singleuser:
       pvcNameTemplate: claim-{username}{servername}
       volumeNameTemplate: volume-{username}{servername}
       storageAccessModes: [ReadWriteOnce]
-  image:
-    name: jupyterhub/k8s-singleuser-sample
-    tag: '0.9.1'
-    pullPolicy: IfNotPresent
-    # pullSecrets:
-    #   - secretName
   imagePullSecret:
     enabled: false
     registry:
@@ -316,18 +287,38 @@ singleuser:
     email:
     password:
   startTimeout: 300
-  cpu:
-    limit:
-    guarantee:
-  memory:
-    limit:
-    guarantee: 1G
   extraResource:
     limits: {}
     guarantees: {}
   cmd: jupyterhub-singleuser
   defaultUrl:
   extraPodConfig: {}
+  memory:
+    limit: 1G
+    guarantee: 1G
+  cpu:
+    limit: .5
+    guarantee: .5
+  image:
+    name: jupyter/minimal-notebook
+    tag: latest
+    pullPolicy: IfNotPresent
+    # pullSecrets:
+    #   - secretName
+  profileList:
+    - display_name: "Minimal environment"
+      description: "To avoid too much bells and whistles: Python."
+      default: true
+    - display_name: "R-notebook"
+      description: "Notebook with R language"
+      memory:
+        limit: 2G
+        guarantee: 1G
+      cpu:
+        limit: 1.0
+        guarantee: .5
+      kubespawner_override:
+        image: jupyter/r-notebook:latest
 
 
 scheduling:
