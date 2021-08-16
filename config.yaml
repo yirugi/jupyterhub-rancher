@@ -1,0 +1,60 @@
+# auth relates to the configuration of JupyterHub's Authenticator class.
+auth:
+  state:
+    enabled: True
+    cryptoKey: "59a4a47f4e1f8e0c270b4182135a37e050ce68cf4c3a721cf4167f5ac6f2954a"
+  admin:
+    users:
+      - bwerts
+      - tayl1055
+  type: ldap
+  ldap:
+    bind_dn_template:
+      - uid={username},ou=People,dc=rcac,dc=purdue,dc=edu
+    server:
+      address: geddes-aux.rcac.purdue.edu
+      port: 636
+      ssl: True
+    dn:
+      lookup: false
+     # search:
+     #   filter: '({login_attr}={login})'
+     #   user: 'uid=rcacadm,ou=People,dc=rcac,dc=purdue,dc=edu'
+     #   password: 'SECRET'
+      templates:
+        - 'uid={username},ou=People,dc=rcac,dc=purdue,dc=edu'
+      user:
+        searchBase: 'ou=People,dc=rcac,dc=purdue,dc=edu'
+        escape: False
+        attribute: 'account'
+        dnAttribute: 'uid'
+    allowedGroups: []
+    #      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
+    #      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
+proxy:
+    secretToken: "3871a03d769c51a7b6f17b7888d07bcebe13bcbc0eb3b9a1f12a67b2463c4f94"
+
+singleuser:
+    memory:
+        limit: 1G
+        guarantee: 1G
+    cpu:
+        limit: .5
+        guarantee: .5
+    image:
+        name: jupyter/minimal-notebook
+        tag: latest
+    profileList:
+        - display_name: "Minimal environment"
+          description: "To avoid too much bells and whistles: Python."
+          default: true
+        - display_name: "R-notebook"
+          description: "Notebook with R language"
+          memory:
+            limit: 2G
+            guarantee: 1G
+          cpu:
+            limit: 1.0
+            guarantee: .5
+          kubespawner_override:
+            image: jupyter/r-notebook:latest
