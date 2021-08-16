@@ -246,8 +246,6 @@ auth:
     allowedGroups: []
     #      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
     #      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
-proxy:
-    secretToken: "3871a03d769c51a7b6f17b7888d07bcebe13bcbc0eb3b9a1f12a67b2463c4f94"
 
 
 singleuser:
