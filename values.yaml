@@ -7,7 +7,7 @@ hub:
     ports:
       nodePort:
     loadBalancerIP:
-  baseUrl: /{{ .Release.Namespace }}/hub
+  baseUrl: /namespace/hub
   cookieSecret:
   publicURL:
   initContainers: []
