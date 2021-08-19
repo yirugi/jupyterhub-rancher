@@ -323,7 +323,7 @@ singleuser:
 
 scheduling:
   userScheduler:
-    enabled: true
+    enabled: false
     replicas: 2
     logLevel: 4
     ## policy:
