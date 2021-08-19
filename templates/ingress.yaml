@@ -23,7 +23,7 @@ spec:
     - host: {{ $host | quote }}
       http:
         paths:
-          - path: /{{ $.Release.Namespace }}/hub #path: {{ $.Values.hub.baseUrl }}{{ $.Values.ingress.pathSuffix }}
+          - path: {{ $.Values.hub.baseUrl }}{{ $.Values.ingress.pathSuffix }}
             backend:
               serviceName: hub
               servicePort: 8081
