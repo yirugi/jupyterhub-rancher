@@ -378,9 +378,10 @@ prePuller:
 
 
 ingress:
-  enabled: false
+  enabled: true
   annotations: {}
-  hosts: []
+  hosts:
+    - beta.geddes.rcac.purdue.edu
   pathSuffix: ''
   tls: []
 
