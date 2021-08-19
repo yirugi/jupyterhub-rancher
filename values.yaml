@@ -7,7 +7,7 @@ hub:
     ports:
       nodePort:
     loadBalancerIP:
-  baseUrl: /namespace/hub
+  baseUrl: /namespace/jupyter
   cookieSecret:
   publicURL:
   initContainers: []
