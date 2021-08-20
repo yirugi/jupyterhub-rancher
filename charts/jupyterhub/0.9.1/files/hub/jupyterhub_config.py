@@ -370,11 +370,11 @@ elif auth_type == 'ldap':
     c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
     c.LDAPAuthenticator.server_address = get_config('auth.ldap.server.address')
     
+    allowed_groups = []
     groups = get_config('auth.ldap.allowedGroups')
-    allowed_groups = groups.split(',')
-    if not groups
-        allowed_groups = []
+
     if groups is not None:
+        allowed_groups = groups.split(',')
         for i in range(len(allowed_groups)):
             allowed_groups[i] = allowed_groups[i].strip()
             allowed_groups[i] = 'cn='+allowed_groups[i]+',ou=groups,dc=rcac,dc=purdue,dc=edu'	
