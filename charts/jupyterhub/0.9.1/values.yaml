@@ -219,7 +219,7 @@ auth:
         attribute: 'account'
         dnAttribute: 'uid'
     allowedGroups: 
-    #      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
+    #      - 'cn=rcacengs,ou=Group,dc=rcac,dc=purdue,dc=edu'
     #      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
 
 
