@@ -386,7 +386,7 @@ elif auth_type == 'ldap':
     print( "groups: " )
     print( *allowed_groups, sep = "\n" )
     #c.LDAPAuthenticator.allowed_groups = allowed_groups
-    c.LDAPAuthenticator.allowed_groups = ["cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu","cn=staff,ou=groups,dc=rcac,dc=purdue,dc=edu"]
+    c.LDAPAuthenticator.allowed_groups = ["cn=rcacengs,ou=Group,dc=rcac,dc=purdue,dc=edu"]
     
     set_config_if_not_none(c.LDAPAuthenticator, 'server_port', 'auth.ldap.server.port')
     set_config_if_not_none(c.LDAPAuthenticator, 'use_ssl', 'auth.ldap.server.ssl')
