@@ -371,9 +371,9 @@ elif auth_type == 'ldap':
     c.LDAPAuthenticator.server_address = get_config('auth.ldap.server.address')
     
     groups = get_config('auth.ldap.allowedGroups')
-    allowed_groups = groups.split(';')
+    allowed_groups = groups.split(',')
     if groups is not None:
-        for i in range(0, len(allowed_groups)-1)
+        for i in range(len(allowed_groups))
             allowed_groups[i] = allowed_groups[i].strip()
             allowed_groups[i] = 'cn='+allowed_groups[i]+',ou=groups,dc=rcac,dc=purdue,dc=edu'		
     else:

@@ -12,7 +12,7 @@ questions:
 - variable: auth.ldap.allowedGroups
   label: Allowed Groups
   description: comma seperated list of LDAP groups allowed to access this hub (e.g. group1; group2; group3), leave blank to disable
-  group: "hub"
+  group: "Groups"
   type: string
 - variable: singleuser.image.name
   type: string
