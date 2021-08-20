@@ -21,7 +21,6 @@ questions:
     description: jupyterhub image to use
     type: enum
     group: Jupyterhub Image Settings 
-    show_if: "customImage=false"
     options:
     - jupyter/minimal-notebook
     - jupyter/r-notebook
@@ -30,6 +29,7 @@ questions:
   label: docker image name
   description: name of docker image (e.g. jupyter/minimal-notebook)
   group: Jupyterhub Image Settings  
+  show_if: "customImage=true"
 - variable: singleuser.image.tag
   type: string
   required: true
