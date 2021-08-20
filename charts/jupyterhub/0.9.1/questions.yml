@@ -1,5 +1,6 @@
 categories:
 - hub
+- images
 questions:
 - variable: hub.baseUrl
   default: "/<namespace>/jupyter"
@@ -13,30 +14,38 @@ questions:
   default: "false"
   type: boolean
   label: Use custom image
-  show_subquestion_if: "true"
+  group: customImage
+  show_subquestion_if: true
   subquestions:
   - variable: singleuser.image.name
     type: string
     label: docker image name
     description: name of docker image (e.g. jupyter/minimal-notebook)
+    required: true
+    group: image
     
 - variable: singleuser.image.name
   label: image name
+  required: true
   description: jupyterhub image to use
   type: enum
+  group: image
   show_if: "customImage=false"
   options:
   - jupyter/minimal-notebook
   - jupyter/r-notebook
 - variable: singleuser.image.tag
   type: string
+  required: true
   default: latest
+  group: image
   label: docker image tag
   description: version of docker image to use
 
 - variable: extraConfiguration
   type: boolean
   default: "false"
+  group: config
   subquestions:
   - variable: memory.limit
     label: memory limit
