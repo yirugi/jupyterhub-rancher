@@ -14,27 +14,27 @@ questions:
   type: boolean
   label: Use custom image
   group: Jupyterhub Image
-  show_subquestion_if: true
+  show_subquestion_if: false
   subquestions:
   - variable: singleuser.image.name
-    type: string
-    label: docker image name
-    description: name of docker image (e.g. jupyter/minimal-notebook)
-    group: Jupyterhub Image Settings  
+    label: image name
+    description: jupyterhub image to use
+    type: enum
+    group: Jupyterhub Image Settings 
+    show_if: "customImage=false"
+    options:
+    - jupyter/minimal-notebook
+    - jupyter/r-notebook
 - variable: singleuser.image.name
-  label: image name
-  description: jupyterhub image to use
-  type: enum
-  group: Jupyterhub Image Settings 
-  show_if: "customImage=false"
-  options:
-  - jupyter/minimal-notebook
-  - jupyter/r-notebook
+  type: string
+  label: docker image name
+  description: name of docker image (e.g. jupyter/minimal-notebook)
+  group: Jupyterhub Image Settings  
 - variable: singleuser.image.tag
   type: string
   required: true
   default: latest
-  group: image
+  group: Jupyterhub Image Settings
   label: docker image tag
   description: version of docker image to use
 - variable: extraConfiguration
@@ -47,12 +47,16 @@ questions:
   - variable: memory.limit
     label: memory limit
     default: 1G
+    type: string
   - variable: memory.guarantee
     label: memory guarantee
     default: 1G
+    type: string
   - variable: cpu.limit
     label: cpu limit
     default: .5
+    type: string
   - variable: cpu.guarantee
     label: cpu guarantee
     default: .5
+    type: string
