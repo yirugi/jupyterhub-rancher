@@ -15,6 +15,7 @@ questions:
   description: name of docker image (e.g. jupyter/minimal-notebook)
   group: Jupyterhub Image Settings
   default: jupyter/minimal-notebook
+  required: true
 - variable: singleuser.image.tag
   type: string
   required: true
@@ -33,19 +34,19 @@ questions:
     label: memory limit
     default: 1G
     type: string
-    group: config options
+    group: advanced config
   - variable: memory.guarantee
     label: memory guarantee
     default: 1G
     type: string
-    group: config options
+    group: advanced config
   - variable: cpu.limit
     label: cpu limit
     default: .5
     type: string
-    group: config options
+    group: advanced config
   - variable: cpu.guarantee
     label: cpu guarantee
     default: .5
     type: string
-    group: config options
+    group: advanced config
