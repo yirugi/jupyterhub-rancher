@@ -1,8 +1,8 @@
 categories:
-- Setup
+- hub
 questions:
 - variable: hub.baseUrl
-default: /<namespace>/jupyter
-description: Base URL for jupyterhub ingress
-required: true
-label: Hub Base URL
+  default: "/<namespace>/jupyter"
+  description: "Base URL for jupyterhub ingress"
+  required: true
+  label: Hub Base URL
