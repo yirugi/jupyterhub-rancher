@@ -21,6 +21,8 @@ questions:
     description: name of docker image (e.g. jupyter/minimal-notebook)
     
 - variable: singleuser.image.name
+  label: image name
+  description: jupyterhub image to use
   type: enum
   show_if: "customImage=false"
   options:
@@ -37,17 +39,14 @@ questions:
   default: "false"
   subquestions:
   - variable: memory.limit
+    label: memory limit
     default: 1G
   - variable: memory.guarantee
+    label: memory guarantee
     default: 1G
   - variable: cpu.limit
+    label: cpu limit
     default: .5
   - variable: cpu.guarantee
+    label: cpu guarantee
     default: .5
- 
- memory:
-    limit: 1G
-    guarantee: 1G
-  cpu:
-    limit: .5
-    guarantee: .5
