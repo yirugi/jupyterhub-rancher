@@ -9,3 +9,45 @@ questions:
   type: string
   group: "hub"
   invalid_chars: (<|>)
+- variable: customImage
+  default: "false"
+  type: boolean
+  label: Use custom image
+  show_subquestion_if: "true"
+  subquestions:
+  - variable: singleuser.image.name
+    type: string
+    label: docker image name
+    description: name of docker image (e.g. jupyter/minimal-notebook)
+    
+- variable: singleuser.image.name
+  type: enum
+  show_if: "customImage=false"
+  options:
+  - jupyter/minimal-notebook
+  - jupyter/r-notebook
+- variable: singleuser.image.tag
+  type: string
+  default: latest
+  label: docker image tag
+  description: version of docker image to use
+
+- variable: extraConfiguration
+  type: boolean
+  default: "false"
+  subquestions:
+  - variable: memory.limit
+    default: 1G
+  - variable: memory.guarantee
+    default: 1G
+  - variable: cpu.limit
+    default: .5
+  - variable: cpu.guarantee
+    default: .5
+ 
+ memory:
+    limit: 1G
+    guarantee: 1G
+  cpu:
+    limit: .5
+    guarantee: .5

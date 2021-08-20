@@ -305,20 +305,20 @@ singleuser:
     pullPolicy: IfNotPresent
     # pullSecrets:
     #   - secretName
-  profileList:
-    - display_name: "Minimal environment"
-      description: "To avoid too much bells and whistles: Python."
-      default: true
-    - display_name: "R-notebook"
-      description: "Notebook with R language"
-      memory:
-        limit: 2G
-        guarantee: 1G
-      cpu:
-        limit: 1.0
-        guarantee: .5
-      kubespawner_override:
-        image: jupyter/r-notebook:latest
+#  profileList:
+#    - display_name: "Minimal environment"
+#      description: "To avoid too much bells and whistles: Python."
+#      default: true
+#    - display_name: "R-notebook"
+#      description: "Notebook with R language"
+#      memory:
+#        limit: 2G
+#        guarantee: 1G
+#      cpu:
+#        limit: 1.0
+#        guarantee: .5
+#      kubespawner_override:
+#        image: jupyter/r-notebook:latest
 
 
 scheduling:
