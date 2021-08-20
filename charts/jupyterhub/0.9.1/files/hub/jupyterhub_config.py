@@ -381,8 +381,9 @@ elif auth_type == 'ldap':
     else:
         allowed_groups = []
     #setattr(c.LDAPAuthenticator, 'allowed_groups', allowed_groups)
-    print( "# allowed groups: "+str(len(allowed_groups)) )
-    print( "groups: "+allowed_groups )
+    print( "# allowed groups: "+str(len(allowed_groups))+"\n" )
+    print( "groups: " )
+    print( *allowed_groups, sep = "\n" )
     c.LDAPAuthenticator.allowed_groups = allowed_groups
     
     
