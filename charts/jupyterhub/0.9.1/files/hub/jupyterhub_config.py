@@ -369,9 +369,17 @@ elif auth_type == 'lti':
 elif auth_type == 'ldap':
     c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
     c.LDAPAuthenticator.server_address = get_config('auth.ldap.server.address')
+	
+	groups = get_config('auth.ldap.allowedGroups')
+    if groups is not None:
+		allowed_groups
+		for i in range(0, len(groups))
+			allowed_groups[i] = 'cn='+groups[i]+',ou=groups,dc=rcac,dc=purdue,dc=edu'		
+        setattr(c.LDAPAuthenticator, 'allowed_groups', allowed_groups)
+	
     set_config_if_not_none(c.LDAPAuthenticator, 'server_port', 'auth.ldap.server.port')
     set_config_if_not_none(c.LDAPAuthenticator, 'use_ssl', 'auth.ldap.server.ssl')
-    set_config_if_not_none(c.LDAPAuthenticator, 'allowed_groups', 'auth.ldap.allowedGroups')
+    #set_config_if_not_none(c.LDAPAuthenticator, 'allowed_groups', 'auth.ldap.allowedGroups')
     set_config_if_not_none(c.LDAPAuthenticator, 'bind_dn_template', 'auth.ldap.dn.templates')
     set_config_if_not_none(c.LDAPAuthenticator, 'lookup_dn', 'auth.ldap.dn.lookup')
     set_config_if_not_none(c.LDAPAuthenticator, 'lookup_dn_search_filter', 'auth.ldap.dn.search.filter')
