@@ -4,6 +4,5 @@ questions:
 - variable: hub.baseUrl
 default: /<namespace>/jupyter
 description: Base URL for jupyterhub ingress
-type: string
 required: true
 label: Hub Base URL
