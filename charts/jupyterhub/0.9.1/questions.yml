@@ -8,3 +8,4 @@ questions:
   label: Hub Base URL
   type: string
   group: "hub"
+  invalid_chars: (<|>)
