@@ -6,3 +6,5 @@ questions:
   description: "Base URL for jupyterhub ingress"
   required: true
   label: Hub Base URL
+  type: string
+  group: "hub"
