@@ -372,7 +372,7 @@ elif auth_type == 'ldap':
     
     groups = get_config('auth.ldap.allowedGroups')
     allowed_groups = groups.split(',')
-    if groups == ""
+    if not groups
         allowed_groups = []
     if groups is not None:
         for i in range(len(allowed_groups)):
