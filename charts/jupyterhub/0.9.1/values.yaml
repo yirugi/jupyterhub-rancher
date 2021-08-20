@@ -218,7 +218,7 @@ auth:
         escape: False
         attribute: 'account'
         dnAttribute: 'uid'
-    allowedGroups: []
+    allowedGroups: 
     #      - 'cn=rcacengs,ou=groups,dc=rcac,dc=purdue,dc=edu'
     #      - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
 
